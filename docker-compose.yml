@@ -1,0 +1,42 @@
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql # 초기화 스크립트 추가 및 자동 실행
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bank-network
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PESSIMISTIC_DATABASE_URL=postgresql://postgres:password@postgres:5432/pessimistic
+      - OPTIMISTIC_DATABASE_URL=postgresql://postgres:password@postgres:5432/optimistic
+    volumes:
+      - .:/app
+    networks:
+      - bank-network
+
+networks:
+  bank-network:
+    driver: bridge
+
+volumes:
+  postgres_data: 
