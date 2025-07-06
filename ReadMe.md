@@ -42,7 +42,7 @@
 | ✅ TTL 있음 | 락을 자동으로 풀 수 있어서 **영원히 걸리는 락 방지 가능**  |
 | ✅ 널리 쓰임  | 인프라에 이미 Redis가 깔려 있는 경우가 많음          |
 
-```
+```python
 result = await redis.set(
     lock_key, 
     lock_value, 
@@ -64,4 +64,6 @@ result = await redis.set(
 
 ## 실행
 
-* DB 초기화 값
+```bash
+docker compose up -d
+```
