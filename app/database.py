@@ -1,4 +1,5 @@
 import asyncpg
+import redis.asyncio as redis
 import os
 from typing import Optional
 from contextlib import asynccontextmanager
@@ -11,6 +12,14 @@ PESSIMISTIC_DATABASE_URL = os.getenv(
 OPTIMISTIC_DATABASE_URL = os.getenv(
     "OPTIMISTIC_DATABASE_URL", 
     "postgresql://postgres:password@postgres:5432/optimistic"
+)
+DISTRIBUTED_DATABASE_URL = os.getenv(
+    "DISTRIBUTED_DATABASE_URL", 
+    "postgresql://postgres:password@postgres:5432/distributed"
+)
+REDIS_URL = os.getenv(
+    "REDIS_URL",
+    "redis://redis:6379"
 )
 
 class Database:
@@ -70,9 +79,33 @@ class Database:
         
         self._initialized = True
 
+class RedisClient:
+    def __init__(self, redis_url: str):
+        self.redis_url = redis_url
+        self.client: Optional[redis.Redis] = None
+    
+    async def init_client(self):
+        """Redis 클라이언트 초기화"""
+        if self.client is None:
+            self.client = redis.from_url(self.redis_url, decode_responses=True)
+    
+    async def close_client(self):
+        """Redis 클라이언트 종료"""
+        if self.client:
+            await self.client.close()
+            self.client = None
+    
+    async def get_client(self):
+        """Redis 클라이언트 가져오기"""
+        if not self.client:
+            await self.init_client()
+        return self.client
+
 # 전역 데이터베이스 인스턴스들
 pessimistic_db = Database(PESSIMISTIC_DATABASE_URL)
 optimistic_db = Database(OPTIMISTIC_DATABASE_URL)
+distributed_db = Database(DISTRIBUTED_DATABASE_URL)
+redis_client = RedisClient(REDIS_URL)
 
 # 비관적락 전용 헬퍼 함수
 @asynccontextmanager
@@ -88,4 +121,18 @@ async def get_optimistic_connection():
     """낙관적락 데이터베이스 커넥션 가져오기"""
     await optimistic_db.initialize_db()
     async with optimistic_db.get_connection() as conn:
+        yield conn
+
+# 분산락용 데이터베이스 커넥션
+@asynccontextmanager
+async def get_distributed_connection():
+    """분산락을 위한 데이터베이스 커넥션 가져오기 (distributed DB 사용)"""
+    await distributed_db.initialize_db()
+    async with distributed_db.get_connection() as conn:
         yield conn 
+
+# 분산락용 헬퍼 함수
+async def get_redis_client():
+    """Redis 클라이언트 가져오기"""
+    return await redis_client.get_client()
+

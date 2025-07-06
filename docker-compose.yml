@@ -19,6 +19,21 @@ services:
     networks:
       - bank-network
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bank-network
+
   app:
     build: .
     ports:
@@ -26,9 +41,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - PESSIMISTIC_DATABASE_URL=postgresql://postgres:password@postgres:5432/pessimistic
       - OPTIMISTIC_DATABASE_URL=postgresql://postgres:password@postgres:5432/optimistic
+      - REDIS_URL=redis://redis:6379
     volumes:
       - .:/app
     networks:
@@ -39,4 +57,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data: 
+  postgres_data:
+  redis_data: 
