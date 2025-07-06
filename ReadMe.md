@@ -14,6 +14,24 @@
 * DB: Postgres
 * db_name: pessimistic
 
+```json
+{
+  "message": "스트레스 테스트 완료",
+  "total_requests": 10,
+  "success_count": 10,
+  "failed_count": 0,
+  "total_execution_time": 0.1483452320098877,
+  "final_balances": {
+    "account_a": 0,
+    "account_b": 200000
+  },
+  "expected_balances": {
+    "account_a": 0,
+    "account_b": 200000
+  },
+}
+```
+
 ### 시나리오2 : 낙관적락
 왠만하면 충돌 나는 상황이 많지 않다고 가정하고, 
 읽는 시점에는 락을 걸지 않음.
@@ -21,6 +39,38 @@
 
 * DB: Postgres
 * db_name: optimistic
+
+```json
+{
+  "message": "낙관적락 스트레스 테스트 완료",
+  "total_requests": 10,
+  "success_count": 10,
+  "failed_count": 0,
+  "retry_count": 10,
+  "conflict_count": 0,
+  "total_execution_time": 0.2732863426208496,
+  "final_balances": {
+    "account_a": {
+      "balance": 0,
+      "version": 10
+    },
+    "account_b": {
+      "balance": 200000,
+      "version": 10
+    }
+  },
+  "expected_balances": {
+    "account_a": {
+      "balance": 0,
+      "version": 10
+    },
+    "account_b": {
+      "balance": 200000,
+      "version": 10
+    }
+  },
+}
+```
 
 ### 시나리오3: 분산락
 비관적락은 for update가 같은 db 커넥션 안에서만 작동하기 때문에 분산 환경에 취약.
@@ -50,8 +100,25 @@ result = await redis.set(
     ex=10  # Expire = 10초 뒤 자동 만료로 사라짐  
 )
 ```
-
-
+```python
+{
+  "message": "Redis 분산락 스트레스 테스트 완료",
+  "total_requests": 10,
+  "success_count": 10,
+  "failed_count": 0,
+  "lock_failure_count": 0,
+  "total_execution_time": 0.9344222545623779,
+  "final_balances": {
+    "account_a": 0,
+    "account_b": 200000
+  },
+  "expected_balances": {
+    "account_a": 0,
+    "account_b": 200000
+  },
+  "final_lock_count": 0,
+}
+```
 
 ## 테스트 
 * init: account_a: 100000원, account_b: 100000원

@@ -46,6 +46,7 @@ services:
     environment:
       - PESSIMISTIC_DATABASE_URL=postgresql://postgres:password@postgres:5432/pessimistic
       - OPTIMISTIC_DATABASE_URL=postgresql://postgres:password@postgres:5432/optimistic
+      - DISTRIBUTED_DATABASE_URL=postgresql://postgres:password@postgres:5432/distributed
       - REDIS_URL=redis://redis:6379
     volumes:
       - .:/app

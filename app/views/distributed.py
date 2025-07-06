@@ -99,59 +99,6 @@ async def stress_test():
         "results": results
     }
 
-@router.post("/stress-test-heavy")
-async def stress_test_heavy():
-    """무거운 스트레스 테스트: 100개의 동시 이체 요청 (각각 1000원)
-    Redis 분산락의 성능 측정
-    """
-    
-    # 먼저 계좌 초기화
-    await service.initialize_accounts()
-    
-    # 100개의 동시 이체 요청 생성
-    tasks = []
-    for i in range(100):
-        request = TransferRequest(
-            from_account="account_a",
-            to_account="account_b",
-            amount=1000
-        )
-        task = service.transfer(request)
-        tasks.append(task)
-    
-    # 시작 시간 기록
-    start_time = time.time()
-    
-    # 모든 이체 요청을 동시에 실행
-    results = await asyncio.gather(*tasks)
-    
-    # 총 실행 시간 계산
-    total_time = time.time() - start_time
-    
-    # 최종 잔액 확인
-    final_balances = await service.get_balances()
-    
-    # 성공/실패 통계
-    success_count = sum(1 for result in results if result.success)
-    failed_count = len(results) - success_count
-    lock_failure_count = sum(1 for result in results if "락 획득 실패" in result.message)
-    
-    # 평균 실행 시간
-    avg_execution_time = sum(result.execution_time for result in results if result.execution_time) / len(results)
-    
-    return {
-        "message": "Redis 분산락 무거운 스트레스 테스트 완료",
-        "total_requests": len(results),
-        "success_count": success_count,
-        "failed_count": failed_count,
-        "lock_failure_count": lock_failure_count,
-        "total_execution_time": total_time,
-        "average_execution_time": avg_execution_time,
-        "final_balances": final_balances,
-        "expected_balances": {"account_a": 0, "account_b": 200000},
-        "throughput": len(results) / total_time if total_time > 0 else 0
-    }
-
 @router.get("/info")
 async def distributed_info():
     """Redis 분산락 방식 정보"""
@@ -161,31 +108,4 @@ async def distributed_info():
         "technique": "SET NX EX (Redis Atomic Operations)",
         "description": "Redis를 사용한 분산락으로 동시성 문제를 해결하는 방식",
         "status": "✅ 구현 완료",
-        "features": [
-            "Redis SET NX EX 명령을 사용한 락 획득",
-            "UUID를 사용한 락 값으로 안전한 해제",
-            "Lua 스크립트를 사용한 원자적 락 해제",
-            "락 타임아웃으로 데드락 방지",
-            "락 획득 실패 시 재시도",
-            "계좌 순서 정렬로 데드락 방지"
-        ],
-        "configuration": {
-            "lock_timeout": "10초",
-            "max_retries": "50회",
-            "retry_delay": "0.1초"
-        },
-        "pros": [
-            "분산 환경에서 사용 가능",
-            "애플리케이션 레벨에서 락 제어",
-            "데이터베이스 독립적",
-            "명확한 락 타임아웃",
-            "락 상태 모니터링 가능"
-        ],
-        "cons": [
-            "Redis 의존성 추가",
-            "네트워크 레이턴시 영향",
-            "락 획득 실패 시 대기 시간",
-            "Redis 장애 시 락 기능 중단",
-            "구현 복잡도 증가"
-        ]
     } 
